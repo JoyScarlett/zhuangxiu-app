@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>2026装修预算模板</title>
+    <link rel="stylesheet" href="styles.css?v=16" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="template-title">
+          <p class="eyebrow">最装修销售工具</p>
+          <h1>2026装修预算模板</h1>
+          <p class="template-subtitle">客户档案 | 现场量房 | 主材清单 | 预算看板 | 报告导出</p>
+        </div>
+        <button class="icon-button" id="printReportBtn" title="导出报告">导出</button>
+      </header>
+
+      <main>
+        <section class="template-board">
+          <aside class="summary-band">
+            <div class="date-cell">
+              <span>2026</span>
+              <strong>装修</strong>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">客户总数</span>
+              <strong id="customerCount">0</strong>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">本单项目</span>
+              <strong id="materialCount">0</strong>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">主材预估</span>
+              <strong id="quoteTotal">¥0</strong>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">客户预算</span>
+              <strong id="activeBudget">¥0</strong>
+            </div>
+            <div class="memo-cell">
+              <span>本单装修备注</span>
+              <p id="activeNeedPreview">暂无备注</p>
+            </div>
+          </aside>
+
+          <div class="dashboard-panel compare-panel">
+            <p class="panel-title">预算 / 报价对比图</p>
+            <div class="bar-chart" aria-hidden="true">
+              <div class="bar-column">
+                <span id="budgetBar"></span>
+                <small>预算</small>
+              </div>
+              <div class="bar-column accent">
+                <span id="quoteBar"></span>
+                <small>报价</small>
+              </div>
+            </div>
+            <strong id="budgetDelta">差额 ¥0</strong>
+          </div>
+
+          <div class="dashboard-panel category-panel">
+            <p class="panel-title">主材分类预算使用情况</p>
+            <div id="categoryChart" class="category-chart"></div>
+          </div>
+
+          <div class="dashboard-panel status-panel">
+            <p class="panel-title">本单主材完成度</p>
+            <div class="donut-wrap">
+              <div class="donut" id="completionDonut"><span id="completionPercent">0%</span></div>
+              <div>
+                <strong id="statusChip">待量房</strong>
+                <p><span id="filledPriceCount">0</span> 项已填价格，<span id="pendingPriceCount">0</span> 项待填</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel customer-module-panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">顾客模块</p>
+              <h2 id="activeCustomerTitle">请选择客户</h2>
+            </div>
+            <button class="primary-button" id="newCustomerBtn">新增客户</button>
+          </div>
+          <div id="customerList" class="customer-module-list"></div>
+        </section>
+
+        <nav class="tabs" aria-label="当前顾客功能">
+          <button class="tab" data-view="customers">客户档案</button>
+          <button class="tab active" data-view="measure">主材清单</button>
+          <button class="tab" data-view="quote">预算看板</button>
+          <button class="tab" data-view="report">报价报告</button>
+        </nav>
+
+        <section class="view" id="customersView">
+          <form class="panel" id="customerForm">
+            <div class="section-head">
+              <h2>客户档案</h2>
+              <button type="submit" class="primary-button">保存客户</button>
+            </div>
+            <div class="form-grid">
+              <label>姓名<input id="customerName" placeholder="例如：王先生" required /></label>
+              <label>电话<input id="customerPhone" inputmode="tel" placeholder="13800000000" /></label>
+              <label>小区<input id="customerAddress" placeholder="小区 / 楼栋 / 房号" /></label>
+              <label>户型<input id="customerLayout" placeholder="三室两厅一卫" /></label>
+              <label>面积<input id="customerArea" type="number" min="0" step="0.1" placeholder="建筑面积 m²" /></label>
+              <label>预算<input id="customerBudget" type="number" min="0" step="1000" placeholder="预算 元" /></label>
+              <label>风格<input id="customerStyle" placeholder="现代 / 奶油 / 原木" /></label>
+              <label>状态
+                <select id="customerStatus">
+                  <option>待量房</option>
+                  <option>已量房</option>
+                  <option>待报价</option>
+                  <option>已签约</option>
+                  <option>未成交</option>
+                </select>
+              </label>
+            </div>
+            <label>客户需求<textarea id="customerNeeds" placeholder="家庭成员、收纳、拆改、风格偏好、重点空间"></textarea></label>
+          </form>
+        </section>
+
+        <section class="view active" id="measureView">
+          <div class="panel material-sheet">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">现场量房主材清单</p>
+                <h2>装修主材明细表</h2>
+              </div>
+              <button class="primary-button" id="addMaterialBtn">添加项目</button>
+            </div>
+            <div class="sheet-customer-bar">
+              <span>业主：<strong id="sheetOwner">未选择</strong></span>
+              <span>电话：<strong id="sheetPhone">未填</strong></span>
+              <span>地址：<strong id="sheetAddress">未填</strong></span>
+              <span>面积：<strong id="sheetArea">0 m²</strong></span>
+            </div>
+            <div class="table-scroll">
+              <table class="material-table" aria-label="主材项目清单">
+                <thead>
+                  <tr>
+                    <th>序号</th>
+                    <th>主材项目</th>
+                    <th>数量</th>
+                    <th>单位</th>
+                    <th>单价</th>
+                    <th>总价</th>
+                    <th>规格说明</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="materialTableBody"></tbody>
+              </table>
+            </div>
+            <div class="sheet-actions">
+              <button class="secondary-button" id="addCategoryBtn">添加分类</button>
+              <button class="secondary-button" id="resetMaterialsBtn">恢复模板</button>
+            </div>
+            <div class="quote-footer">
+              <span>主材合计</span>
+              <strong id="materialGrandTotal">¥0</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="quoteView">
+          <div class="panel">
+            <div class="section-head">
+              <h2>主材分类汇总</h2>
+              <button class="secondary-button" id="recalcBtn">重新计算</button>
+            </div>
+            <div class="metric-grid" id="categorySummary"></div>
+          </div>
+
+          <div class="panel">
+            <div class="section-head">
+              <h2>主材报价</h2>
+              <button class="primary-button" id="saveQuoteBtn">保存报价</button>
+            </div>
+            <div id="quoteItems" class="quote-items"></div>
+            <div class="quote-footer">
+              <span>报价合计</span>
+              <strong id="quoteTotalLarge">¥0</strong>
+            </div>
+            <p class="hint">此报价为销售现场初步估算，最终以设计方案和公司正式报价为准。</p>
+          </div>
+        </section>
+
+        <section class="view" id="reportView">
+          <div class="panel report-panel" id="reportPanel">
+            <div class="section-head">
+              <h2>主材清单</h2>
+              <button class="primary-button" id="reportPrintBtn">打印 / 存 PDF</button>
+            </div>
+            <div id="reportContent"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <template id="emptyTemplate">
+      <div class="empty-state">暂无数据，先从上方新增客户或添加项目。</div>
+    </template>
+
+    <script src="app.js?v=16"></script>
+  </body>
+</html>
