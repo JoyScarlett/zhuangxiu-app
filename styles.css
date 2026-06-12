@@ -723,7 +723,7 @@ textarea:focus {
 }
 
 .material-table {
-  width: 1120px;
+  width: 1220px;
   border-collapse: collapse;
   table-layout: fixed;
   font-size: 12px;
@@ -761,15 +761,16 @@ textarea:focus {
 }
 
 .material-table th:nth-child(5),
-.material-table th:nth-child(6) {
+.material-table th:nth-child(6),
+.material-table th:nth-child(7) {
   width: 108px;
 }
 
-.material-table th:nth-child(7) {
+.material-table th:nth-child(8) {
   width: 390px;
 }
 
-.material-table th:nth-child(8) {
+.material-table th:nth-child(9) {
   width: 82px;
 }
 

@@ -62,7 +62,20 @@ const defaultMaterialGroups = [
   },
 ];
 
-const cloneDefaultMaterials = () => JSON.parse(JSON.stringify(defaultMaterialGroups));
+const normalizeMaterialGroups = (groups = []) =>
+  (Array.isArray(groups) ? groups : []).map((group) => ({
+    name: group.name || "",
+    items: (Array.isArray(group.items) ? group.items : []).map((item) => ({
+      name: item.name || "",
+      quantity: item.quantity ?? "",
+      unit: item.unit || "",
+      price: item.price ?? "",
+      amount: item.amount ?? "",
+      commission: item.commission ?? "",
+      spec: item.spec || "",
+    })),
+  }));
+const cloneDefaultMaterials = () => normalizeMaterialGroups(JSON.parse(JSON.stringify(defaultMaterialGroups)));
 const $ = (id) => document.getElementById(id);
 const money = (value) => `¥${Math.round(value || 0).toLocaleString("zh-CN")}`;
 const preciseMoney = (value) => Number(value || 0).toFixed(2);
@@ -122,17 +135,19 @@ function normalizeState(raw, options = {}) {
     moduleName: customer.moduleName || (customer.name ? "" : `客户${index + 1}`),
     createdAt: customer.createdAt || new Date().toISOString(),
     updatedAt: customer.updatedAt || "",
-    materialGroups: fromLegacy
-      ? index === 0
-        ? cloneDefaultMaterials()
-        : []
-      : Array.isArray(customer.materialGroups)
-      ? customer.materialGroups
-      : index === 0 && sharedMaterials
-        ? sharedMaterials
-        : index === 0
+    materialGroups: normalizeMaterialGroups(
+      fromLegacy
+        ? index === 0
           ? cloneDefaultMaterials()
-          : [],
+          : []
+        : Array.isArray(customer.materialGroups)
+        ? customer.materialGroups
+        : index === 0 && sharedMaterials
+          ? sharedMaterials
+          : index === 0
+            ? cloneDefaultMaterials()
+            : []
+    ),
   }));
 
   return {
@@ -414,8 +429,20 @@ function groupTotal(group) {
   return group.items.reduce((sum, item) => sum + materialAmount(item), 0);
 }
 
+function itemCommission(item) {
+  return item.commission === "" || item.commission === undefined || item.commission === null ? 0 : Number(item.commission || 0);
+}
+
+function groupCommissionTotal(group) {
+  return group.items.reduce((sum, item) => sum + itemCommission(item), 0);
+}
+
 function materialGrandTotal() {
   return activeMaterials().reduce((sum, group) => sum + groupTotal(group), 0);
+}
+
+function commissionGrandTotal() {
+  return activeMaterials().reduce((sum, group) => sum + groupCommissionTotal(group), 0);
 }
 
 function materialItemCount() {
@@ -571,16 +598,17 @@ function renderMaterials() {
   $("sheetArea").textContent = `${customer?.area || 0} m²`;
   $("sheetDealDate").textContent = formatDealDate(customer?.dealDate);
   $("materialGrandTotal").textContent = money(materialGrandTotal());
+  $("commissionGrandTotal").textContent = money(commissionGrandTotal());
 
   const body = $("materialTableBody");
   body.innerHTML = "";
   if (!customer) {
-    body.innerHTML = `<tr><td colspan="8" class="sheet-empty-cell">请先新增客户，再填写这个客户的主材表。</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" class="sheet-empty-cell">请先新增客户，再填写这个客户的主材表。</td></tr>`;
     return;
   }
 
   if (!activeMaterials().length) {
-    body.innerHTML = `<tr><td colspan="8" class="sheet-empty-cell">这个客户是空白清单，点击“添加项目”开始填写。</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" class="sheet-empty-cell">这个客户是空白清单，点击“添加项目”开始填写。</td></tr>`;
     return;
   }
 
@@ -588,7 +616,7 @@ function renderMaterials() {
     const categoryRow = document.createElement("tr");
     categoryRow.className = "category-row";
     categoryRow.innerHTML = `
-      <td colspan="8">
+      <td colspan="9">
         <input class="category-input" value="${escapeHtml(group.name)}" data-group="${groupIndex}" data-field="category">
       </td>
     `;
@@ -603,6 +631,7 @@ function renderMaterials() {
         <td><input value="${escapeHtml(item.unit)}" data-group="${groupIndex}" data-item="${itemIndex}" data-field="unit"></td>
         <td><input type="number" min="0" step="0.01" value="${inputNumberValue(item.price)}" data-group="${groupIndex}" data-item="${itemIndex}" data-field="price"></td>
         <td><input class="amount-input" type="number" min="0" step="0.01" value="${inputAmountValue(item)}" data-group="${groupIndex}" data-item="${itemIndex}" data-field="amount"></td>
+        <td><input class="commission-input" type="number" min="0" step="0.01" value="${inputNumberValue(item.commission)}" data-group="${groupIndex}" data-item="${itemIndex}" data-field="commission"></td>
         <td><textarea rows="1" data-group="${groupIndex}" data-item="${itemIndex}" data-field="spec">${escapeHtml(item.spec)}</textarea></td>
         <td><button class="row-delete-button" data-action="delete-item" data-group="${groupIndex}" data-item="${itemIndex}">删除</button></td>
       `;
@@ -615,6 +644,7 @@ function renderMaterials() {
       <td></td>
       <td colspan="4">合计</td>
       <td>${preciseMoney(groupTotal(group))}</td>
+      <td>${preciseMoney(groupCommissionTotal(group))}</td>
       <td colspan="2"></td>
     `;
     body.appendChild(totalRow);
@@ -654,7 +684,7 @@ function renderQuote() {
         (item) => `
           <div class="quote-line">
             <span>${escapeHtml(item.name || "未命名项目")}</span>
-            <small>${formatQuantity(item.quantity)} ${escapeHtml(item.unit || "")} x ${formatPrice(item.price)}</small>
+            <small>${formatQuantity(item.quantity)} ${escapeHtml(item.unit || "")} x ${formatPrice(item.price)} · 提成 ${formatCommission(item.commission)}</small>
             <strong>${money(materialAmount(item))}</strong>
           </div>
         `
@@ -692,15 +722,16 @@ function renderReport() {
             <td>${escapeHtml(item.unit)}</td>
             <td>${formatPlainPrice(item.price)}</td>
             <td>${formatPlainAmount(item)}</td>
+            <td>${formatPlainCommission(item.commission)}</td>
             <td>${escapeHtml(item.spec || "")}</td>
           </tr>`
         )
         .join("");
 
       return `
-        <tr class="report-category"><td colspan="7">${escapeHtml(group.name)}</td></tr>
+        <tr class="report-category"><td colspan="8">${escapeHtml(group.name)}</td></tr>
         ${rows}
-        <tr class="report-total"><td></td><td colspan="4">合计</td><td>${preciseMoney(groupTotal(group))}</td><td></td></tr>
+        <tr class="report-total"><td></td><td colspan="4">合计</td><td>${preciseMoney(groupTotal(group))}</td><td>${preciseMoney(groupCommissionTotal(group))}</td><td></td></tr>
       `;
     })
     .join("");
@@ -717,11 +748,12 @@ function renderReport() {
       </div>
       <table class="report-table material-report-table">
         <thead>
-          <tr><th>序号</th><th>主材项目</th><th>数量</th><th>单位</th><th>单价</th><th>总价</th><th>规格说明</th></tr>
+          <tr><th>序号</th><th>主材项目</th><th>数量</th><th>单位</th><th>单价</th><th>总价</th><th>提成</th><th>规格说明</th></tr>
         </thead>
         <tbody>${materialRows}</tbody>
       </table>
       <div class="quote-footer"><span>总计</span><strong>${money(materialGrandTotal())}</strong></div>
+      <div class="quote-footer commission-footer"><span>提成合计</span><strong>${money(commissionGrandTotal())}</strong></div>
       <p class="hint">此清单为销售现场主材初步估算，最终以设计方案和公司正式报价为准。</p>
     </div>
   `;
@@ -743,7 +775,8 @@ function updateMaterialField(target) {
 
   const item = customer.materialGroups[groupIndex]?.items[itemIndex];
   if (!item) return;
-  item[field] = field === "quantity" || field === "price" || field === "amount" ? parseEditableNumber(target.value) : target.value;
+  item[field] =
+    field === "quantity" || field === "price" || field === "amount" || field === "commission" ? parseEditableNumber(target.value) : target.value;
 }
 
 function parseEditableNumber(value) {
@@ -769,7 +802,15 @@ function formatPrice(value) {
   return value === "" || value === undefined || value === null ? "未填单价" : money(value);
 }
 
+function formatCommission(value) {
+  return value === "" || value === undefined || value === null ? "未填" : money(value);
+}
+
 function formatPlainPrice(value) {
+  return value === "" || value === undefined || value === null ? "" : preciseMoney(value);
+}
+
+function formatPlainCommission(value) {
   return value === "" || value === undefined || value === null ? "" : preciseMoney(value);
 }
 
@@ -857,6 +898,14 @@ $("materialTableBody").addEventListener("change", (event) => {
   renderAll();
 });
 
+$("materialTableBody").addEventListener("input", (event) => {
+  updateMaterialField(event.target);
+  saveState();
+  if (event.target.dataset.field === "commission") {
+    $("commissionGrandTotal").textContent = money(commissionGrandTotal());
+  }
+});
+
 $("materialTableBody").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-action='delete-item']");
   if (!button) return;
@@ -873,7 +922,7 @@ $("addMaterialBtn").addEventListener("click", () => {
   const customer = ensureActiveCustomer();
   const lastGroup = customer.materialGroups[customer.materialGroups.length - 1] || { name: "新增分类", items: [] };
   if (!customer.materialGroups.length) customer.materialGroups.push(lastGroup);
-  lastGroup.items.push({ name: "新增项目", quantity: 1, unit: "项", price: "", amount: "", spec: "" });
+  lastGroup.items.push({ name: "新增项目", quantity: 1, unit: "项", price: "", amount: "", commission: "", spec: "" });
   saveState();
   renderAll();
 });
@@ -882,7 +931,7 @@ $("addCategoryBtn").addEventListener("click", () => {
   const customer = ensureActiveCustomer();
   customer.materialGroups.push({
     name: "新增分类",
-    items: [{ name: "新增项目", quantity: 1, unit: "项", price: "", amount: "", spec: "" }],
+    items: [{ name: "新增项目", quantity: 1, unit: "项", price: "", amount: "", commission: "", spec: "" }],
   });
   saveState();
   renderAll();
