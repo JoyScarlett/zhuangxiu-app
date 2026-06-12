@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>2026装修预算模板</title>
-    <link rel="stylesheet" href="styles.css?v=16" />
+    <link rel="stylesheet" href="styles.css?v=17" />
   </head>
   <body>
     <div class="app-shell">
@@ -110,6 +110,7 @@
               <label>面积<input id="customerArea" type="number" min="0" step="0.1" placeholder="建筑面积 m²" /></label>
               <label>预算<input id="customerBudget" type="number" min="0" step="1000" placeholder="预算 元" /></label>
               <label>风格<input id="customerStyle" placeholder="现代 / 奶油 / 原木" /></label>
+              <label>成交日期<input id="customerDealDate" type="date" /></label>
               <label>状态
                 <select id="customerStatus">
                   <option>待量房</option>
@@ -138,6 +139,7 @@
               <span>电话：<strong id="sheetPhone">未填</strong></span>
               <span>地址：<strong id="sheetAddress">未填</strong></span>
               <span>面积：<strong id="sheetArea">0 m²</strong></span>
+              <span>成交日期：<strong id="sheetDealDate">未填</strong></span>
             </div>
             <div class="table-scroll">
               <table class="material-table" aria-label="主材项目清单">
@@ -206,6 +208,6 @@
       <div class="empty-state">暂无数据，先从上方新增客户或添加项目。</div>
     </template>
 
-    <script src="app.js?v=16"></script>
+    <script src="app.js?v=17"></script>
   </body>
 </html>

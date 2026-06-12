@@ -93,6 +93,7 @@ function normalizeState(raw, options = {}) {
     area: Number(customer.area || 0),
     budget: Number(customer.budget || 0),
     style: customer.style || "",
+    dealDate: customer.dealDate || "",
     status: customer.status || "待量房",
     needs: customer.needs || "",
     moduleName: customer.moduleName || (customer.name ? "" : `客户${index + 1}`),
@@ -181,6 +182,7 @@ function makeBlankCustomer() {
     area: 0,
     budget: 0,
     style: "",
+    dealDate: "",
     status: "待量房",
     needs: "",
     moduleName: `客户${count}`,
@@ -210,6 +212,7 @@ function readCustomerForm() {
     area: Number($("customerArea").value || 0),
     budget: Number($("customerBudget").value || 0),
     style: $("customerStyle").value.trim(),
+    dealDate: $("customerDealDate").value,
     status: $("customerStatus").value,
     needs: $("customerNeeds").value.trim(),
   };
@@ -223,6 +226,7 @@ function fillCustomerForm(customer) {
   $("customerArea").value = customer?.area || "";
   $("customerBudget").value = customer?.budget || "";
   $("customerStyle").value = customer?.style || "";
+  $("customerDealDate").value = customer?.dealDate || "";
   $("customerStatus").value = customer?.status || "待量房";
   $("customerNeeds").value = customer?.needs || "";
 }
@@ -338,7 +342,7 @@ function renderCustomerModules() {
         <span class="customer-index">客户${index + 1}</span>
         <span class="customer-brief">
           <strong>${escapeHtml(customerDisplayName(customer))}</strong>
-          <small>${escapeHtml(customer.status || "待量房")} · ${money(customerTotal(customer))}</small>
+          <small>${escapeHtml(customer.status || "待量房")} · 成交：${escapeHtml(formatDealDate(customer.dealDate))} · ${money(customerTotal(customer))}</small>
         </span>
         <span class="customer-toggle">${isExpanded ? "收起" : "展开"}</span>
       </button>
@@ -350,6 +354,7 @@ function renderCustomerModules() {
                 <span>地址：${escapeHtml(customer.address || "未填")}</span>
                 <span>面积：${escapeHtml(formatCustomerArea(customer))}</span>
                 <span>预算：${money(customer.budget || 0)}</span>
+                <span>成交日期：${escapeHtml(formatDealDate(customer.dealDate))}</span>
               </div>
               <div class="customer-accordion-actions">
                 <button class="secondary-button compact-button" data-action="view-customers" data-id="${customer.id}">客户档案</button>
@@ -373,6 +378,13 @@ function formatCustomerArea(customer) {
   return Number(customer?.area || 0) > 0 ? `${customer.area}m²` : "未填面积";
 }
 
+function formatDealDate(value) {
+  if (!value) return "未填";
+  const [year, month, day] = String(value).split("-");
+  if (!year || !month || !day) return value;
+  return `${year}/${month}/${day}`;
+}
+
 function customerDisplayName(customer) {
   if (customer?.name) return customer.name;
   const index = state.customers.findIndex((item) => item.id === customer?.id);
@@ -385,6 +397,7 @@ function renderMaterials() {
   $("sheetPhone").textContent = customer?.phone || "未填";
   $("sheetAddress").textContent = customer?.address || "未填";
   $("sheetArea").textContent = `${customer?.area || 0} m²`;
+  $("sheetDealDate").textContent = formatDealDate(customer?.dealDate);
   $("materialGrandTotal").textContent = money(materialGrandTotal());
 
   const body = $("materialTableBody");
@@ -528,6 +541,7 @@ function renderReport() {
         <span>电话：${escapeHtml(customer.phone || "")}</span>
         <span>地址：${escapeHtml(customer.address || "")}</span>
         <span>建筑面积：${customer.area || 0}m²</span>
+        <span>成交日期：${escapeHtml(formatDealDate(customer.dealDate))}</span>
       </div>
       <table class="report-table material-report-table">
         <thead>

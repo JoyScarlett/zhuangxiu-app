@@ -653,7 +653,7 @@ textarea:focus {
 
 .sheet-customer-bar {
   display: grid;
-  grid-template-columns: 1fr 1fr 2fr 1fr;
+  grid-template-columns: 1fr 1fr 2fr 1fr 1.2fr;
   gap: 1px;
   margin-bottom: 10px;
   border: 1px solid var(--grid-dark);
@@ -885,7 +885,7 @@ textarea:focus {
 
 .paper-meta {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   margin: 14px 0 0;
   border: 1px solid var(--grid-dark);
   border-bottom: 0;
