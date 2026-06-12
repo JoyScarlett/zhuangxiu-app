@@ -17,6 +17,20 @@
         <button class="icon-button" id="printReportBtn" title="导出报告">导出</button>
       </header>
 
+      <section class="panel cloud-panel" id="cloudPanel">
+        <div class="cloud-copy">
+          <p class="eyebrow">云端保存</p>
+          <h2 id="cloudTitle">登录云端账号</h2>
+          <p id="cloudStatus">未登录：当前资料只保存在这台设备。</p>
+        </div>
+        <form class="cloud-login-form" id="cloudLoginForm">
+          <input id="cloudEmail" type="email" autocomplete="username" placeholder="邮箱" required />
+          <input id="cloudPassword" type="password" autocomplete="current-password" placeholder="密码" required />
+          <button type="submit" class="primary-button">登录</button>
+        </form>
+        <button class="secondary-button" id="cloudLogoutBtn" type="button" hidden>退出登录</button>
+      </section>
+
       <main>
         <section class="template-board">
           <aside class="summary-band">
@@ -208,6 +222,6 @@
       <div class="empty-state">暂无数据，先从上方新增客户或添加项目。</div>
     </template>
 
-    <script src="app.js?v=17"></script>
+    <script type="module" src="app.js?v=18"></script>
   </body>
 </html>

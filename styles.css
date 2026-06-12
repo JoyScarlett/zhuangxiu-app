@@ -372,6 +372,50 @@ h1 {
   box-shadow: var(--shadow);
 }
 
+.cloud-panel {
+  display: grid;
+  grid-template-columns: 1fr minmax(360px, 520px) auto;
+  align-items: center;
+  gap: 12px;
+  background: #fffdf7;
+}
+
+.cloud-copy {
+  display: grid;
+  gap: 5px;
+}
+
+.cloud-copy h2 {
+  font-size: 18px;
+}
+
+.cloud-copy p:last-child {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.cloud-login-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+}
+
+.cloud-login-form[hidden],
+#cloudLogoutBtn[hidden] {
+  display: none;
+}
+
+.cloud-online {
+  border-color: #6bbd7d;
+  background: #f4fff6;
+}
+
+.cloud-error {
+  border-color: var(--danger);
+  background: #fff5f6;
+}
+
 .section-head {
   display: flex;
   align-items: center;
@@ -977,6 +1021,11 @@ textarea:focus {
     grid-template-columns: 1fr 1fr;
   }
 
+  .cloud-panel,
+  .cloud-login-form {
+    grid-template-columns: 1fr;
+  }
+
   .tabs {
     overflow-x: auto;
     grid-template-columns: repeat(4, minmax(96px, 1fr));
@@ -1034,7 +1083,8 @@ textarea:focus {
   }
 
   .section-head button,
-  .sheet-actions button {
+  .sheet-actions button,
+  .cloud-panel button {
     width: 100%;
   }
 

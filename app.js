@@ -1,5 +1,19 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+import { doc, getDoc, getFirestore, onSnapshot, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
 const STORAGE_KEY = "zxz_measure_app_v6";
 const LEGACY_KEYS = ["zxz_measure_app_v5", "zxz_measure_app_v4", "zxz_measure_app_v3", "zxz_measure_app_v2", "zxz_measure_app_v1"];
+const CLOUD_SYNCED_KEY = `${STORAGE_KEY}_cloud_synced_uid`;
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC_0LeG-Y0ws04oJK2oNys4ZXbdXNpWueE",
+  authDomain: "zhuangxiu-app.firebaseapp.com",
+  projectId: "zhuangxiu-app",
+  storageBucket: "zhuangxiu-app.firebasestorage.app",
+  messagingSenderId: "95125920477",
+  appId: "1:95125920477:web:10dfc4788a7599b4651934",
+};
 
 const defaultMaterialGroups = [
   {
@@ -52,10 +66,19 @@ const cloneDefaultMaterials = () => JSON.parse(JSON.stringify(defaultMaterialGro
 const $ = (id) => document.getElementById(id);
 const money = (value) => `¥${Math.round(value || 0).toLocaleString("zh-CN")}`;
 const preciseMoney = (value) => Number(value || 0).toFixed(2);
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
 
 let state = loadState();
 let activeCustomerId = state.activeCustomerId || state.customers[0]?.id || null;
 let expandedCustomerId = null;
+let cloudUser = null;
+let cloudUnsubscribe = null;
+let isApplyingCloudState = false;
+let isSavingCloud = false;
+let cloudReady = false;
+let pendingCloudSave = false;
 
 function loadState() {
   const saved = readStorage(STORAGE_KEY);
@@ -136,6 +159,155 @@ function hasMeaningfulCustomerData(customer) {
 function saveState() {
   state.activeCustomerId = activeCustomerId;
   writeStorage(STORAGE_KEY, JSON.stringify(state));
+  queueCloudSave();
+}
+
+function serializableState() {
+  return normalizeState(JSON.parse(JSON.stringify(state || { activeCustomerId: null, customers: [] })), { fromLegacy: false });
+}
+
+function userDocRef(user = cloudUser) {
+  return user ? doc(db, "users", user.uid, "appData", "main") : null;
+}
+
+function markCloudSynced(user) {
+  writeStorage(CLOUD_SYNCED_KEY, user?.uid || "");
+}
+
+function hasSyncedCloudBefore(user) {
+  return readStorage(CLOUD_SYNCED_KEY) === user?.uid;
+}
+
+function updateCloudStatus(message, options = {}) {
+  const status = $("cloudStatus");
+  const title = $("cloudTitle");
+  const panel = $("cloudPanel");
+  if (!status || !title || !panel) return;
+  status.textContent = message;
+  title.textContent = options.title || (cloudUser ? "已连接云端" : "登录云端账号");
+  panel.classList.toggle("cloud-online", Boolean(cloudUser));
+  panel.classList.toggle("cloud-error", Boolean(options.error));
+}
+
+function queueCloudSave() {
+  if (!cloudUser || !cloudReady || isApplyingCloudState) return;
+  pendingCloudSave = true;
+  window.clearTimeout(queueCloudSave.timer);
+  queueCloudSave.timer = window.setTimeout(saveCloudState, 650);
+}
+
+async function saveCloudState() {
+  if (!cloudUser || !cloudReady || isApplyingCloudState || isSavingCloud) return;
+  pendingCloudSave = false;
+  isSavingCloud = true;
+  try {
+    await setDoc(
+      userDocRef(),
+      {
+        state: serializableState(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+    updateCloudStatus(`已登录：${cloudUser.email || "云端账号"}，资料已保存到云端。`);
+  } catch (error) {
+    updateCloudStatus(`云端保存失败：${friendlyFirebaseError(error)}`, { error: true });
+  } finally {
+    isSavingCloud = false;
+    if (pendingCloudSave) {
+      queueCloudSave();
+    }
+  }
+}
+
+async function loadCloudState(user) {
+  cloudReady = false;
+  updateCloudStatus("正在读取云端资料...");
+  const localState = serializableState();
+  const hasLocalData = localState.customers.length > 0;
+
+  try {
+    const ref = userDocRef(user);
+    const snapshot = await getDoc(ref);
+    const cloudState = snapshot.exists() ? snapshot.data()?.state : null;
+
+    if (hasLocalData && !hasSyncedCloudBefore(user)) {
+      await setDoc(
+        ref,
+        {
+          state: localState,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+      markCloudSynced(user);
+      updateCloudStatus(`已登录：${user.email || "云端账号"}，已把本机旧资料上传到云端。`);
+    } else if (cloudState?.customers?.length) {
+      applyState(cloudState);
+      markCloudSynced(user);
+      updateCloudStatus(`已登录：${user.email || "云端账号"}，已读取云端资料。`);
+    } else if (hasLocalData) {
+      await setDoc(
+        ref,
+        {
+          state: localState,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+      markCloudSynced(user);
+      updateCloudStatus(`已登录：${user.email || "云端账号"}，已把本机资料保存到云端。`);
+    } else {
+      markCloudSynced(user);
+      updateCloudStatus(`已登录：${user.email || "云端账号"}，云端暂无客户资料。`);
+    }
+
+    cloudReady = true;
+    subscribeCloudState(user);
+  } catch (error) {
+    cloudReady = false;
+    updateCloudStatus(`云端读取失败：${friendlyFirebaseError(error)}`, { error: true });
+  }
+}
+
+function applyState(nextState) {
+  isApplyingCloudState = true;
+  state = normalizeState(nextState || {}, { fromLegacy: false });
+  activeCustomerId = state.activeCustomerId || state.customers[0]?.id || null;
+  expandedCustomerId = activeCustomerId;
+  writeStorage(STORAGE_KEY, JSON.stringify(state));
+  fillCustomerForm(activeCustomer());
+  renderAll();
+  isApplyingCloudState = false;
+}
+
+function subscribeCloudState(user) {
+  cloudUnsubscribe?.();
+  cloudUnsubscribe = onSnapshot(
+    userDocRef(user),
+    (snapshot) => {
+      if (!cloudReady || isSavingCloud) return;
+      const cloudState = snapshot.data()?.state;
+      if (!cloudState) return;
+      const localJson = JSON.stringify(serializableState());
+      const cloudJson = JSON.stringify(normalizeState(cloudState, { fromLegacy: false }));
+      if (localJson === cloudJson) return;
+      applyState(cloudState);
+      updateCloudStatus(`已登录：${user.email || "云端账号"}，已同步云端最新资料。`);
+    },
+    (error) => {
+      updateCloudStatus(`云端同步中断：${friendlyFirebaseError(error)}`, { error: true });
+    }
+  );
+}
+
+function friendlyFirebaseError(error) {
+  const code = error?.code || "";
+  if (code.includes("auth/invalid-credential") || code.includes("auth/wrong-password")) return "邮箱或密码不正确";
+  if (code.includes("auth/user-not-found")) return "这个邮箱还没有添加用户";
+  if (code.includes("permission-denied")) return "数据库权限未打开";
+  if (code.includes("unavailable")) return "网络暂时不可用";
+  return error?.message || "请稍后重试";
 }
 
 function readStorage(key) {
@@ -735,6 +907,41 @@ $("printReportBtn").addEventListener("click", () => {
   window.print();
 });
 $("reportPrintBtn").addEventListener("click", () => window.print());
+
+onAuthStateChanged(auth, (user) => {
+  cloudUser = user;
+  cloudReady = false;
+  cloudUnsubscribe?.();
+  cloudUnsubscribe = null;
+
+  $("cloudLoginForm").hidden = Boolean(user);
+  $("cloudLogoutBtn").hidden = !user;
+
+  if (user) {
+    loadCloudState(user);
+  } else {
+    updateCloudStatus("未登录：当前资料只保存在这台设备。");
+  }
+});
+
+$("cloudLoginForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const email = $("cloudEmail").value.trim();
+  const password = $("cloudPassword").value;
+  if (!email || !password) return;
+
+  updateCloudStatus("正在登录云端账号...");
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    $("cloudPassword").value = "";
+  } catch (error) {
+    updateCloudStatus(`登录失败：${friendlyFirebaseError(error)}`, { error: true });
+  }
+});
+
+$("cloudLogoutBtn").addEventListener("click", async () => {
+  await signOut(auth);
+});
 
 fillCustomerForm(activeCustomer());
 renderAll();
