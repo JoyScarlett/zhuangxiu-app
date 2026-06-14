@@ -723,7 +723,7 @@ textarea:focus {
 }
 
 .material-table {
-  width: 1220px;
+  width: 1320px;
   border-collapse: collapse;
   table-layout: fixed;
   font-size: 12px;
@@ -762,15 +762,19 @@ textarea:focus {
 
 .material-table th:nth-child(5),
 .material-table th:nth-child(6),
-.material-table th:nth-child(7) {
+.material-table th:nth-child(8) {
   width: 108px;
 }
 
-.material-table th:nth-child(8) {
-  width: 390px;
+.material-table th:nth-child(7) {
+  width: 92px;
 }
 
 .material-table th:nth-child(9) {
+  width: 390px;
+}
+
+.material-table th:nth-child(10) {
   width: 82px;
 }
 
@@ -807,7 +811,8 @@ textarea:focus {
 }
 
 .serial,
-.amount {
+.amount,
+.commission-amount {
   font-weight: 900;
 }
 
